@@ -1,0 +1,253 @@
+<?php 
+namespace App\Http\Controllers;
+
+use App\Http\Requests;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Input;
+use Illuminate\Http\Request;
+use App\Siswa;
+use Carbon\Carbon;
+use App\rekapLaporan;
+use Validator;
+
+
+
+class UNController extends Controller
+{
+    public function create()
+    {
+        return view('inputdataun');
+    }
+
+    public function store(Request $request)
+    {
+
+        //validasi
+            $input = Input::all();  
+            $rules = array(
+                'bindo'              => 'required|numeric', 
+                'bing'               => 'required|numeric',
+                'mate'               => 'required|numeric',
+                'ipa'                => 'required|numeric',
+                'ips'                => 'required|numeric',
+            );
+
+        $validator = Validator::make($input, $rules);
+
+        if ($validator->fails()) {
+             $messages = $validator->messages();
+              return redirect('inputdataun')->withErrors($validator);
+        } else {
+            $post = $request->all();
+            $nilai_un = array(
+                'bindo' => $post['bindo'],
+                'bing' => $post['bing'],
+                'mate' => $post['mate'],
+                'ipa' => $post['ipa'],
+                'ips' => $post['ips'],
+            );
+
+
+            $nilai_profil_un_siswa = array(
+                'bindo' =>$this->convert_to_profil($nilai_un['bindo']),
+                'bing' =>$this->convert_to_profil($nilai_un['bing']),
+                'mate' =>$this->convert_to_profil($nilai_un['mate']),
+                'ipa' =>$this->convert_to_profil($nilai_un['ipa']),
+                'ips' =>$this->convert_to_profil($nilai_un['ips']),
+            );
+
+            $profil_prodi = DB::table('profil_un')->get();
+
+            $gap = array(
+                'teknik_informatika' => array(
+                                            'bindo' => 0,'bing' => 0,'mate' => 0,'ipa' => 0,'ips' =>0),
+                'sistem_informasi' => array(
+                                            'bindo' => 0,'bing' => 0,'mate' => 0,'ipa' => 0,'ips' =>0),
+                'akuntansi' => array(
+                                            'bindo' => 0,'bing' => 0,'mate' => 0,'ipa' => 0,'ips' =>0),
+                'manajemen' => array(
+                                            'bindo' => 0,'bing' => 0,'mate' => 0,'ipa' => 0,'ips' =>0),
+                'manajemen_informatika' => array(
+                                            'bindo' => 0,'bing' => 0,'mate' => 0,'ipa' => 0,'ips' =>0),
+                );
+
+            $nsf = array(
+                    'teknik_informatika' => 0,
+                    'sistem_informasi' => 0,
+                    'akuntansi' => 0,
+                    'manajemen' => 0,
+                    'manajemen_informatika' => 0,
+
+                );
+
+
+
+
+            
+            //nilai convert nilai siswa
+        
+            //get user_id
+            $user = DB::table('user')->orderBy('user_id', 'desc')->first();
+            //dd($user);
+            $get_user_id = $user->user_id;
+            
+            //convert to gap then to bobot
+
+        $nsf_combine = "";
+        $user = DB::table('user')->orderBy('user_id', 'desc')->first();
+        $get_user_id = $user->user_id;
+        
+
+           foreach ($profil_prodi as $val => $prod) {
+
+                if($this->getNameProgramStudi($prod->id_profil_un)->nama_program == 'Teknik Informatika'){
+                    
+                    $gap['teknik_informatika']['bindo'] = $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo);
+                    $gap['teknik_informatika']['bing'] = $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing);
+                    $gap['teknik_informatika']['mate'] = $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika);
+                    $gap['teknik_informatika']['ipa'] = $this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa);
+                    $gap['teknik_informatika']['ips'] = $this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips);
+                    //hitung nsf
+                    $nsf['teknik_informatika'] = ($gap['teknik_informatika']['bindo'] + $gap['teknik_informatika']['bing'] + $gap['teknik_informatika']['mate'] +  $gap['teknik_informatika']['ipa'] + $gap['teknik_informatika']['ips'])/5;
+    
+                   $nsf_combine .=$nsf['teknik_informatika'].",";
+                   
+                    //dd($insert);
+
+                }else if($this->getNameProgramStudi($prod->id_profil_un)->nama_program == 'Sistem Informasi'){
+                    $gap['sistem_informasi']['bindo'] = $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo);
+                    $gap['sistem_informasi']['bing'] = $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing);
+                    $gap['sistem_informasi']['mate'] = $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika);
+                    $gap['sistem_informasi']['ipa'] = $this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa);
+                    $gap['sistem_informasi']['ips'] = $this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips);
+                    //hitung nsf
+                    $nsf['sistem_informasi'] = ($gap['sistem_informasi']['bindo'] + $gap['sistem_informasi']['bing'] + $gap['sistem_informasi']['mate'] +  $gap['sistem_informasi']['ipa'] + $gap['sistem_informasi']['ips'])/5;
+                   
+                    $nsf_combine .=$nsf['sistem_informasi'].",";
+                   // $nsf_combine = $nsf_combine.",".$nsf['sistem_informasi']+",";
+                   
+
+                }else if($this->getNameProgramStudi($prod->id_profil_un)->nama_program == 'Manajemen'){
+                    $gap['akuntansi']['bindo'] = $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo);
+                    $gap['akuntansi']['bing'] = $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing);
+                    $gap['akuntansi']['mate'] = $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika);
+                    $gap['akuntansi']['ipa'] = $this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa);
+                    $gap['akuntansi']['ips'] = $this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips);
+                    //hitung nsf
+                    $nsf['akuntansi'] = ($gap['akuntansi']['bindo'] + $gap['akuntansi']['bing'] + $gap['akuntansi']['mate'] +  $gap['akuntansi']['ipa'] + $gap['akuntansi']['ips'])/5;
+                    //$nsf_combine = $nsf_combine+",".$nsf['akuntansi']+",";
+                    $nsf_combine .=$nsf['akuntansi'].",";
+
+                }else if($this->getNameProgramStudi($prod->id_profil_un)->nama_program == 'Manajemen Informasi'){
+                     $gap['manajemen']['bindo'] = $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo);
+                    $gap['manajemen']['bing'] = $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing);
+                    $gap['manajemen']['mate'] = $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika);
+                    $gap['manajemen']['ipa'] = $this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa);
+                    $gap['manajemen']['ips'] = $this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips);
+                    //hitung nsf
+                    $nsf['manajemen'] = ($gap['manajemen']['bindo'] + $gap['manajemen']['bing'] + $gap['manajemen']['mate'] +  $gap['manajemen']['ipa'] + $gap['manajemen']['ips'])/5;
+                    $nsf_combine .=$nsf['manajemen'].",";
+                    //$nsf_combine = $nsf_combine.",".$nsf['manajemen']+",";
+
+                }else if($this->getNameProgramStudi($prod->id_profil_un)->nama_program == 'Akuntansi'){
+                    $gap['manajemen_informatika']['bindo'] = $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo);
+                    $gap['manajemen_informatika']['bing'] = $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing);
+                    $gap['manajemen_informatika']['mate'] = $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika);
+                    $gap['manajemen_informatika']['ipa'] = $this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa);
+                    $gap['manajemen_informatika']['ips'] = $this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips);
+                    //hitung nsf
+                    $nsf['manajemen_informatika'] = ($gap['manajemen_informatika']['bindo'] + $gap['manajemen_informatika']['bing'] + $gap['manajemen_informatika']['mate'] +  $gap['manajemen_informatika']['ipa'] + $gap['manajemen_informatika']['ips'])/5;
+                    $nsf_combine .=$nsf['manajemen_informatika'].",";
+                    //$nsf_combine = $nsf_combine.",".$nsf['manajemen']+",";
+                }else{
+                    
+                }
+            }  //return view('soal_ist');
+             //dd($nsf_combine);
+            $string = substr($nsf_combine,0, -1); // remove leading ","
+
+             $data = array(
+                        'id_user' =>$get_user_id, 
+                        'bobot_mate' => $this->convert_to_bobot($nilai_profil_un_siswa['bindo'] - $prod->bindo),
+                        'bobot_bindo' => $this->convert_to_bobot($nilai_profil_un_siswa['bing'] - $prod->bing),
+                        'bobot_bing' => $this->convert_to_bobot($nilai_profil_un_siswa['mate'] - $prod->matematika),
+                        'bobot_ipa' =>$this->convert_to_bobot($nilai_profil_un_siswa['ipa'] - $prod->ipa),
+                        'bobot_ips' =>$this->convert_to_bobot($nilai_profil_un_siswa['ips'] - $prod->ips),
+                        'nsf' =>  $string,
+                        'created_at' =>Carbon::now());
+$user_favorites = DB::table('ujian_nasional')->where('id_user', '=', $get_user_id)->first();
+if (is_null($user_favorites)) {
+            $insert = DB::table('ujian_nasional')->insert($data);
+            return view('pengantar_ujian_ist');
+        }
+
+
+            
+            
+        }
+    }
+
+    public function getNameProgramStudi($program_id){
+        $getName = DB::table('program_study')->select('nama_program')->where('id_programstudy','=',$program_id)->first();
+        return $getName;
+    }
+
+    public function convert_to_profil($input_nilai_un){
+        if($input_nilai_un >= 80 && $input_nilai_un <=100 ){
+                return 5;
+        }else if($input_nilai_un >= 60 && $input_nilai_un <=79){
+                return 4;
+        }else if($input_nilai_un >= 40 && $input_nilai_un <= 59){
+                return 3;
+        }else if($input_nilai_un >= 20 && $input_nilai_un <= 39){
+                return 2;
+        }else if($input_nilai_un >= 0 && $input_nilai_un <= 19){
+                return 1;
+        }else{
+                return 0;
+        }
+    }
+
+    public function convert_to_bobot($gap){
+        if($gap == 0){
+            return 5;
+
+        }else if($gap == 1  ){
+            return 4.5;
+
+        }else if($gap == 2){
+             return 3.5;
+
+        }else if($gap == 3){
+             return 2.5;
+
+        }else if($gap == 4){
+             return 1.5;
+
+        }else if($gap == -1){
+            return 4;
+
+        }else if($gap == -2){
+             return 3;
+
+        }else if($gap == -3){
+             return 2;
+
+        }else if($gap == -4){
+             return 1;
+        }else{
+
+        }
+    }
+
+    public function count_total($ncf, $nsf){
+        return (70%$ncf)+(30%$nsf);
+    }
+
+    public function sort($array){
+        
+    }
+    
+}
+
